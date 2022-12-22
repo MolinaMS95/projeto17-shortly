@@ -21,7 +21,7 @@ export async function userTokenValidation(req, res, next) {
       [rows[0].user_id]
     );
     if (user.rows.length === 0) {
-      return res.sendStatus(401);
+      return res.sendStatus(404);
     }
 
     res.locals.user = user.rows[0];
