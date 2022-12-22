@@ -35,3 +35,28 @@ export async function getLinkById(req, res) {
     res.status(500).send(error.message);
   }
 }
+
+export async function openUrl(req, res) {
+  const { shortUrl } = req.params;
+
+  try {
+    const { rows } = await connectionDB.query(
+      `SELECT * FROM links WHERE "shortUrl"=$1;`,
+      [shortUrl]
+    );
+
+    if (rows.length === 0) {
+      return res.sendStatus(404);
+    }
+
+    const visitCount = rows[0].visitCount + 1;
+    await connectionDB.query(`UPDATE links SET "visitCount"=$1 WHERE id=$2;`, [
+      visitCount,
+      rows[0].id,
+    ]);
+
+    return res.redirect(rows[0].url);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+}
