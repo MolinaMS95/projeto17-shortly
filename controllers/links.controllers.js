@@ -60,3 +60,29 @@ export async function openUrl(req, res) {
     res.status(500).send(error.message);
   }
 }
+
+export async function deleteLink(req, res) {
+  const user = res.locals.user;
+  const { id } = req.params;
+
+  try {
+    const { rows } = await connectionDB.query(
+      "SELECT * FROM links WHERE id=$1;",
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.sendStatus(404);
+    }
+
+    if(rows[0].user_id !== user.id) {
+      return res.sendStatus(401);
+    }
+
+    await connectionDB.query("DELETE FROM links WHERE id=$1", [rows[0].id]);
+    
+    return res.sendStatus(204);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+}
