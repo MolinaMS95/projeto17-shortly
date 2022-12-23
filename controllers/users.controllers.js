@@ -53,18 +53,34 @@ export async function getUser(req, res) {
         JSON_BUILD_OBJECT('id', users.id, 
                           'name', users.name, 
                           "visitCount", sum(links."visitCount"),
-                          "shortenedUrls", JSON_BUILD_OBJECT(
+                          "shortenedUrls", JSON_AGG(
                             'id', links.id,
                             "shortUrl", links."shortUrl", 
                             'url', links.url, 
                             "visitCount", links."visitCount")) 
-       FROM users JOIN links ON users.id = links.user_id,
+       FROM users JOIN links ON users.id = links.user_id
        WHERE users.id = $1
        GROUP BY users.id;`,
       [user.id]
     );
 
     res.status(200).send(rows[0]);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+}
+
+export async function topUsers(req, res) {
+  try {
+    const { rows } = await connectionDB.query(
+      `SELECT users.id, users.name, COALESCE(COUNT(links.urls), 0) AS "linksCount", COALESCE(SUM(links."visitCount"), 0) AS "visitCount"
+       FROM users LEFT JOIN links ON users.id = links.user_id
+       GROUP BY users.id
+       ORDER BY "visitCount" DESC
+       LIMIT 10`
+    );
+
+    res.status(200).send(rows);
   } catch (error) {
     res.status(500).send(error.message);
   }
