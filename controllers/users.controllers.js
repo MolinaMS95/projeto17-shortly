@@ -32,6 +32,7 @@ export async function signIn(req, res) {
         "UPDATE sessions SET token=$1 WHERE user_id=$2;",
         [token, user.id]
       );
+      return res.status(200).send(token);;
     }
 
     await connectionDB.query(
@@ -49,16 +50,12 @@ export async function getUser(req, res) {
 
   try {
     const { rows } = await connectionDB.query(
-      `SELECT 
-        JSON_BUILD_OBJECT('id', users.id, 
-                          'name', users.name, 
-                          "visitCount", sum(links."visitCount"),
-                          "shortenedUrls", JSON_AGG(
-                            'id', links.id,
-                            "shortUrl", links."shortUrl", 
-                            'url', links.url, 
-                            "visitCount", links."visitCount")) 
-       FROM users JOIN links ON users.id = links.user_id
+      `SELECT users.id, users.name, SUM(links."visitCount") AS "visitCount",
+              JSON_AGG(JSON_BUILD_OBJECT('id', links.id,
+                                         'shortUrl', links."shortUrl", 
+                                         'url', links.url, 
+                                         'visitCount', links."visitCount")) AS "shortenedUrls"
+       FROM users LEFT JOIN links ON users.id = links.user_id
        WHERE users.id = $1
        GROUP BY users.id;`,
       [user.id]
@@ -73,7 +70,7 @@ export async function getUser(req, res) {
 export async function topUsers(req, res) {
   try {
     const { rows } = await connectionDB.query(
-      `SELECT users.id, users.name, COALESCE(COUNT(links.urls), 0) AS "linksCount", COALESCE(SUM(links."visitCount"), 0) AS "visitCount"
+      `SELECT users.id, users.name, COALESCE(COUNT(links.url), 0) AS "linksCount", COALESCE(SUM(links."visitCount"), 0) AS "visitCount"
        FROM users LEFT JOIN links ON users.id = links.user_id
        GROUP BY users.id
        ORDER BY "visitCount" DESC
